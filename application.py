@@ -122,7 +122,7 @@ def fetch():
 
 
 
-    content = {"sample": "hi"}
+    content = {"sample": "bye"}
     r = jsonify(content)
     r.status_code = 200
     return r
