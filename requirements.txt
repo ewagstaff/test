@@ -1,2 +1,3 @@
+setuptools>=0.8
 Flask
 awsebcli
