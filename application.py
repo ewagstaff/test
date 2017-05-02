@@ -5,18 +5,18 @@ Uses Elastic Beanstalk
 '''
 
 from flask import Flask, render_template, request, jsonify
-# from StringIO import StringIO
-# from zipfile import ZipFile
-# from urllib import urlopen
-# from datetime import time
-# from dateutil.parser import parse
-# import datetime
-# import requests
-# import csv
-# import p2p
-# import sys
-# import os
-# from p2p import P2PException
+from StringIO import StringIO
+from zipfile import ZipFile
+from urllib import urlopen
+from datetime import time
+from dateutil.parser import parse
+import datetime
+import requests
+import csv
+import p2p
+import sys
+import os
+from p2p import P2PException
 
 # Elastic Beanstalk initalization
 application = Flask(__name__)
