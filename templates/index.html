@@ -1,28 +1,115 @@
-{% extends "base.html" %} {% import 'macros.html' as macros %} 
+{% extends "base.html" %} 
 {% block content %}
+
+<style>
+.file-container {
+    overflow: hidden;
+    position: relative;
+}
+
+.file-container [type=file] {
+    cursor: inherit;
+    display: block;
+    font-size: 1px;
+    filter: alpha(opacity=0);
+    min-height: 100%;
+    min-width: 100%;
+    opacity: 0;
+    position: absolute;
+    right: 0;
+    text-align: right;
+    top: 0;
+}
+
+.file-container [type=file] {
+    cursor: pointer;
+}
+
+.form-control {
+	max-width: 100%;
+}
+
+textarea.filters {
+	height: 300px;
+}
+</style>
 
 <div class="col-md-4 col-md-offset-4">
 	<h1 style="text-align: center">Data Mapper</h1>
 
-	<hr>
+	<p><em>A tool to get your street addresses on a map and sorted into categories.</em></p>
 
-	<p>Change your filter rules, update how your .csv files get processed, alter your market settings and more!</p>
+	<button id="settings-button" class="btn btn-info btn-sm">Settings</button>
+	<button class="btn btn-default btn-sm">Save</button> 
+	<label class="file-container btn btn-default btn-sm">
+	    Import
+	    <input type="file"/>
+	</label>
 
-	<button class="btn btn-info btn-sm">Settings</button>
-	<button class="btn btn-default btn-sm">Export</button> 
-	<button class="btn btn-default btn-sm">Import</button> 
+	<div id="settings-panel" style="display:none;">
+
+		<hr>
+
+		<h4>Category Column</h4>
+		<p>The title of the column that will be parsed for categorization.</p>
+		<div class="form-group">
+	        <input class="form-control" placeholder="Column title" id="category-column">
+		</div>
+
+		<h4>Category Filters</h4>
+		<p>An array of JSON objects that will be matched against the column above. If any of the "keywords" are found, the row will be assigned the object's category and color (unless it also matches a term in the optional "exclude" set). An example is provided by default.</p>
+		<div class="form-group">
+	        <textarea class="form-control filters" placeholder="Column title" id="category-filters">
+{
+    "category": "Pie",
+    "keywords": ["pie", "slice"],
+    "color": "#333333"
+},
+{
+    "category": "Cake",
+    "keywords": ["cake", "frosting"],
+    "exclude": ["cupcake", "upside-down"],
+    "color": "#666666"
+}
+	        </textarea>
+		</div>
+
+		<h4>Street Address Column</h4>
+		<p>The title of the column that will be parsed for geocoding.</p>
+		<div class="form-group">
+	        <input class="form-control" placeholder="Column title" id="address-column">
+		</div>
+		<p>Optional: Postal code column title, if not included in the street address.</p>
+		<div class="form-group">
+	        <input class="form-control" placeholder="Column title" id="zip-code-column">
+		</div>
+
+		<h4>Bing API Key</h4>
+		<p>Bing is used to fetch latitude and longitude points from a given address. Please enter your API key to access this service.</p>
+		<div class="form-group">
+	        <input class="form-control" placeholder="API key" id="api-key">
+		</div>
+
+		<h4>Product Affiliate Code</h4>
+		<p>This is the code for the market the story will be created with in P2P.</p>
+		<div class="form-group">
+	        <input class="form-control" placeholder="Product affiliate code (lanews, chinews, sdut, etc)" id="owner-code">
+		</div>
+
+	</div>
 
 	<hr>
 
 	<h2>Fetch</h2>
 	<p>Input a URL to public .csv file (or .zip containing a .csv) for initial processing. Outputs a new .csv file.</p>
-	<form method="post" action="/index"  id="db_post" name="db_post">
+	<form>
 
 	    <div class="form-group">
-            <input class="form-control" placeholder="Enter URL to public file">
+            <input class="form-control" placeholder="Enter URL to public file" id="fetch_url">
     	</div>
+
 	    
-	    <button type="submit" class="btn btn-primary">Submit</button>
+	    <button id="fetch" class="btn btn-primary">Submit</button>
 
 	</form>   
 
@@ -30,13 +117,13 @@
 
 	<h2>Process</h2>
 	<p>Upload existing .csv file for processing through category filtering and geocoding systems. Outputs a new .csv file.</p>
-	<form method="post" action="/index"  id="db_post" name="db_post">
+	<form>
 
 	    <div class="form-group">
             <input class="form-control" type="file">
     	</div>
 	    
-	    <button type="submit" class="btn btn-primary">Submit</button>
+	    <button id="process" class="btn btn-primary">Submit</button>
 
 	</form>   
 
@@ -50,11 +137,38 @@
             <input class="form-control" type="file">
     	</div>
 	    
-	    <button type="submit" class="btn btn-info">Stage Map</button>
-	    <button type="submit" class="btn btn-success">Live Map</button>
+	    <button id="stage_map" class="btn btn-info">Stage Map</button>
+	    <button id="live_map" class="btn btn-success">Live Map</button>
 
 	</form>   
 
 </div>
+
+<script>
+	//Show or hide our settings
+	$("#settings-button").click(function(){
+		$("#settings-panel").slideToggle();
+	});
+
+	//Fetch logic
+	$("#fetch").click(function(e){
+		e.preventDefault();
+
+		//Package data to be sent
+
+		var result = $.ajax({
+			async: false,
+			type: "POST",
+			url: '/fetch/',
+			data: JSON.stringify({test: "test"}),
+			contentType: 'application/json;charset=UTF-8',
+		});
+		result.done(function(resp) {
+			console.log(resp);
+		});
+	});
+
+
+</script>
 
 {% endblock %}  
