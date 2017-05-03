@@ -16,11 +16,15 @@ import csv
 import p2p
 import sys
 import os
+import json
 from p2p import P2PException
 
 # Elastic Beanstalk initalization
 application = Flask(__name__)
 application.debug = True
+
+#Get today's date string
+date_string = datetime.date.today().strftime("%Y-%m-%d")
 
 def to_end_of_list(sorted_list, values):
     try:
@@ -118,13 +122,52 @@ def index():
 
 @application.route('/fetch/', methods=['POST'])
 def fetch():
-    print "fetch"
+    #Go get the latest zip from the site
+    
+    content = {}
+    data = json.loads(request.data)
+    filters = data['category_filters']
+
+    #If message is blank, there are no errors
+    message = ""
+
+    if len(data['fetch_url']) < 4:
+        #URL must be at least 4 characters long (but probably longer)
+        message += "Fetch URL is not valid!\n"
+    elif data['fetch_url'][-4:] == ".zip":
+        #If it's a zip file, try to extract the csv
+        url = urlopen(data['fetch_url'])
+        zipfile = ZipFile(StringIO(url.read()))
+        zip_names = zipfile.namelist()
+        if len(zip_names) == 1:
+            file_name = zip_names.pop()
+            extracted_file = zipfile.open(file_name)
+            #Write the file to a csv 
+            with open("original-"+date_string+".csv", "wb") as csv_file:
+                for line in extracted_file:
+                    csv_file.write(line)
+            #Set the csv property to the file
+            content['csv'] = "original-"+date_string+".csv"
+
+        else:
+            message += "Remote zip file must only contain the target file!\n"
+
+    else:
+        #Assume it's ready to opened as a csv otherwise
+        url = urlopen(data['fetch_url'])
+        extracted_file = open(file_name)
 
 
-
-    content = {"sample": "bye"}
+    #Package content to be returned to JS
+    content['message'] = message
     r = jsonify(content)
     r.status_code = 200
+        
+
+    #Send as error if there was one
+    if message:
+        r.status_code = 400
+
     return r
 
 @application.route('/process/', methods=['POST'])

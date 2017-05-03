@@ -154,17 +154,51 @@ textarea.filters {
 	$("#fetch").click(function(e){
 		e.preventDefault();
 
-		//Package data to be sent
+		//See if we've got valid JSON in the filters
+		try {
+			var one_line_filters = "[" + $("#category-filters").val().replace(/\r?\n/g, ' ') + "]";
+			one_line_filters = JSON.parse(one_line_filters);
+		} catch (err){
+			var json_error = "Category filters are not valid JSON!";
+			alert(json_error);
+			throw new Error(json_error);
+		}
 
+		//Package data to be sent
+		payload = {
+			fetch_url: $("#fetch_url").val(),
+			category_column: $("#category-column").val(),
+			category_filters: one_line_filters,
+			address_column: $("#address-column").val(),
+			zip_code_column: $("#zip-code-column").val(),
+			api_key: $("#api-key").val(),
+			owner_code: $("#owner-code").val()
+		}
+
+		//Make the fetch request
 		var result = $.ajax({
 			async: false,
 			type: "POST",
 			url: '/fetch/',
-			data: JSON.stringify({test: "test"}),
+			data: JSON.stringify(payload),
 			contentType: 'application/json;charset=UTF-8',
 		});
+		//Handle success
 		result.done(function(resp) {
+			console.log(result);
 			console.log(resp);
+			if (resp.csv){
+				window.location.href = resp.csv;
+			}
+		});
+		//Handle failure
+		result.fail(function(resp) {
+			//Alert with whatever we got back
+			if (resp.responseJSON){
+				alert(resp.responseJSON.message);
+			} else {
+				alert(resp.statusText);
+			}
 		});
 	});
 
