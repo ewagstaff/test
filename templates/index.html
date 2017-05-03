@@ -40,7 +40,8 @@ textarea.filters {
 	<p><em>A tool to get your street addresses on a map and sorted into categories.</em></p>
 
 	<button id="settings-button" class="btn btn-info btn-sm">Settings</button>
-	<button class="btn btn-default btn-sm">Save</button> 
+	<button id="save-button" class="btn btn-default btn-sm">Save</button> 
+	<a id="download-helper" style="display:none;"></a>
 	<label class="file-container btn btn-default btn-sm">
 	    Import
 	    <input type="file"/>
@@ -150,10 +151,8 @@ textarea.filters {
 		$("#settings-panel").slideToggle();
 	});
 
-	//Fetch logic
-	$("#fetch").click(function(e){
-		e.preventDefault();
-
+	//Package payload for use
+	var packagePayload = function(){
 		//See if we've got valid JSON in the filters
 		try {
 			var one_line_filters = "[" + $("#category-filters").val().replace(/\r?\n/g, ' ') + "]";
@@ -164,8 +163,7 @@ textarea.filters {
 			throw new Error(json_error);
 		}
 
-		//Package data to be sent
-		payload = {
+		var payload = {
 			fetch_url: $("#fetch_url").val(),
 			category_column: $("#category-column").val(),
 			category_filters: one_line_filters,
@@ -174,6 +172,16 @@ textarea.filters {
 			api_key: $("#api-key").val(),
 			owner_code: $("#owner-code").val()
 		}
+
+		return payload;
+	};
+
+	//Fetch logic
+	$("#fetch").click(function(e){
+		e.preventDefault();
+
+		//Package data to be sent
+		var payload = packagePayload();
 
 		//Make the fetch request
 		var result = $.ajax({
@@ -185,10 +193,8 @@ textarea.filters {
 		});
 		//Handle success
 		result.done(function(resp) {
-			console.log(result);
-			console.log(resp);
 			if (resp.csv){
-				window.location.href = resp.csv;
+				window.location.href = "/download/";
 			}
 		});
 		//Handle failure
@@ -202,6 +208,15 @@ textarea.filters {
 		});
 	});
 
+	//Save button logic
+	$('#save-button').click(function(){
+		console.log(this);
+		var storageObj = packagePayload();
+		var data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(storageObj));
+		$('#download-helper').attr("href", data);
+		$('#download-helper').attr("download", "data-mapper-settings.json");
+		$('#download-helper')[0].click();
+	});
 
 </script>
 

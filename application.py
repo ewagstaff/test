@@ -4,7 +4,7 @@ Uses Elastic Beanstalk
 
 '''
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 from StringIO import StringIO
 from zipfile import ZipFile
 from urllib import urlopen
@@ -136,34 +136,41 @@ def fetch():
         message += "Fetch URL is not valid!\n"
     elif data['fetch_url'][-4:] == ".zip":
         #If it's a zip file, try to extract the csv
-        url = urlopen(data['fetch_url'])
-        zipfile = ZipFile(StringIO(url.read()))
-        zip_names = zipfile.namelist()
-        if len(zip_names) == 1:
-            file_name = zip_names.pop()
-            extracted_file = zipfile.open(file_name)
-            #Write the file to a csv 
-            with open("original-"+date_string+".csv", "wb") as csv_file:
-                for line in extracted_file:
-                    csv_file.write(line)
-            #Set the csv property to the file
-            content['csv'] = "original-"+date_string+".csv"
+        try:
+            url = urlopen(data['fetch_url'])
+            zipfile = ZipFile(StringIO(url.read()))
+            zip_names = zipfile.namelist()
+            if len(zip_names) == 1:
+                file_name = zip_names.pop()
+                extracted_file = zipfile.open(file_name)
+                #Write the file to a csv 
+                with open("original-"+date_string+".csv", "wb") as csv_file:
+                    for line in extracted_file:
+                        csv_file.write(line)
+                #Set the csv property to the file
+                content['csv'] = "original-"+date_string+".csv"
 
-        else:
-            message += "Remote zip file must only contain the target file!\n"
+            else:
+                message += "Remote zip file must only contain the target file!\n"
+
+        except IOError as e:
+            message += "Could not locate a file at that URL!\n"
 
     else:
         #Assume it's ready to opened as a csv otherwise
-        url = urlopen(data['fetch_url'])
-        extracted_file = open(file_name)
+        try:
+            url = urlopen(data['fetch_url'])
+            extracted_file = open(file_name)
+        except IOError as e:
+            message += "Could not locate a file at that URL!\n"
+
 
 
     #Package content to be returned to JS
     content['message'] = message
     r = jsonify(content)
     r.status_code = 200
-        
-
+    
     #Send as error if there was one
     if message:
         r.status_code = 400
@@ -178,6 +185,16 @@ def process():
 def map(live):
     print "map"
 
+@application.route('/download/', methods=['GET'])
+def download():
+    with open("original-"+date_string+".csv") as fp:
+        csv = fp.read()
+
+    return Response(
+        csv,
+        mimetype="text/csv",
+        headers={"Content-disposition":
+                 "attachment; filename=original-"+date_string+".csv"})
 
 if __name__ == '__main__':
     application.run(host='0.0.0.0')
