@@ -1,223 +1,306 @@
-{% extends "base.html" %} 
-{% block content %}
+<html>
+	<head>
+		<title>Data Mapper</title>
+		<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
+		<link href="http://fonts.googleapis.com/css?family=Abel|Open+Sans:400,600" rel="stylesheet" />
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	</head>
+	<body>
 
-<style>
-.file-container {
-    overflow: hidden;
-    position: relative;
-}
-
-.file-container [type=file] {
-    cursor: inherit;
-    display: block;
-    font-size: 1px;
-    filter: alpha(opacity=0);
-    min-height: 100%;
-    min-width: 100%;
-    opacity: 0;
-    position: absolute;
-    right: 0;
-    text-align: right;
-    top: 0;
-}
-
-.file-container [type=file] {
-    cursor: pointer;
-}
-
-.form-control {
-	max-width: 100%;
-}
-
-textarea.filters {
-	height: 300px;
-}
-</style>
-
-<div class="col-md-4 col-md-offset-4">
-	<h1 style="text-align: center">Data Mapper</h1>
-
-	<p><em>A tool to get your street addresses on a map and sorted into categories.</em></p>
-
-	<button id="settings-button" class="btn btn-info btn-sm">Settings</button>
-	<button id="save-button" class="btn btn-default btn-sm">Save</button> 
-	<a id="download-helper" style="display:none;"></a>
-	<label class="file-container btn btn-default btn-sm">
-	    Import
-	    <input type="file"/>
-	</label>
-
-	<div id="settings-panel" style="display:none;">
-
-		<hr>
-
-		<h4>Category Column</h4>
-		<p>The title of the column that will be parsed for categorization.</p>
-		<div class="form-group">
-	        <input class="form-control" placeholder="Column title" id="category-column">
-		</div>
-
-		<h4>Category Filters</h4>
-		<p>An array of JSON objects that will be matched against the column above. If any of the "keywords" are found, the row will be assigned the object's category and color (unless it also matches a term in the optional "exclude" set). An example is provided by default.</p>
-		<div class="form-group">
-	        <textarea class="form-control filters" placeholder="Column title" id="category-filters">
-{
-    "category": "Pie",
-    "keywords": ["pie", "slice"],
-    "color": "#333333"
-},
-{
-    "category": "Cake",
-    "keywords": ["cake", "frosting"],
-    "exclude": ["cupcake", "upside-down"],
-    "color": "#666666"
-}
-	        </textarea>
-		</div>
-
-		<h4>Street Address Column</h4>
-		<p>The title of the column that will be parsed for geocoding.</p>
-		<div class="form-group">
-	        <input class="form-control" placeholder="Column title" id="address-column">
-		</div>
-		<p>Optional: Postal code column title, if not included in the street address.</p>
-		<div class="form-group">
-	        <input class="form-control" placeholder="Column title" id="zip-code-column">
-		</div>
-
-		<h4>Bing API Key</h4>
-		<p>Bing is used to fetch latitude and longitude points from a given address. Please enter your API key to access this service.</p>
-		<div class="form-group">
-	        <input class="form-control" placeholder="API key" id="api-key">
-		</div>
-
-		<h4>Product Affiliate Code</h4>
-		<p>This is the code for the market the story will be created with in P2P.</p>
-		<div class="form-group">
-	        <input class="form-control" placeholder="Product affiliate code (lanews, chinews, sdut, etc)" id="owner-code">
-		</div>
-
-	</div>
-
-	<hr>
-
-	<h2>Fetch</h2>
-	<p>Input a URL to public .csv file (or .zip containing a .csv) for initial processing. Outputs a new .csv file.</p>
-	<form>
-
-	    <div class="form-group">
-            <input class="form-control" placeholder="Enter URL to public file" id="fetch_url">
-    	</div>
-
-	    
-	    <button id="fetch" class="btn btn-primary">Submit</button>
-
-	</form>   
-
-	<hr>
-
-	<h2>Process</h2>
-	<p>Upload existing .csv file for processing through category filtering and geocoding systems. Outputs a new .csv file.</p>
-	<form>
-
-	    <div class="form-group">
-            <input class="form-control" type="file">
-    	</div>
-	    
-	    <button id="process" class="btn btn-primary">Submit</button>
-
-	</form>   
-
-	<hr>
-
-	<h2>Create Map</h2>
-	<p>Takes a finalized .csv file and creates either a test map to check results or a map on the live site.</p>
-	<form method="post" action="/index"  id="db_post" name="db_post">
-
-	    <div class="form-group">
-            <input class="form-control" type="file">
-    	</div>
-	    
-	    <button id="stage_map" class="btn btn-info">Stage Map</button>
-	    <button id="live_map" class="btn btn-success">Live Map</button>
-
-	</form>   
-
-</div>
-
-<script>
-	//Show or hide our settings
-	$("#settings-button").click(function(){
-		$("#settings-panel").slideToggle();
-	});
-
-	//Package payload for use
-	var packagePayload = function(){
-		//See if we've got valid JSON in the filters
-		try {
-			var one_line_filters = "[" + $("#category-filters").val().replace(/\r?\n/g, ' ') + "]";
-			one_line_filters = JSON.parse(one_line_filters);
-		} catch (err){
-			var json_error = "Category filters are not valid JSON!";
-			alert(json_error);
-			throw new Error(json_error);
+		<style>
+		.file-container {
+		    overflow: hidden;
+		    position: relative;
 		}
 
-		var payload = {
-			fetch_url: $("#fetch_url").val(),
-			category_column: $("#category-column").val(),
-			category_filters: one_line_filters,
-			address_column: $("#address-column").val(),
-			zip_code_column: $("#zip-code-column").val(),
-			api_key: $("#api-key").val(),
-			owner_code: $("#owner-code").val()
+		.file-container [type=file] {
+		    cursor: inherit;
+		    display: block;
+		    font-size: 1px;
+		    filter: alpha(opacity=0);
+		    min-height: 100%;
+		    min-width: 100%;
+		    opacity: 0;
+		    position: absolute;
+		    right: 0;
+		    text-align: right;
+		    top: 0;
 		}
 
-		return payload;
-	};
+		.file-container [type=file] {
+		    cursor: pointer;
+		}
 
-	//Fetch logic
-	$("#fetch").click(function(e){
-		e.preventDefault();
+		.form-control {
+			max-width: 100%;
+		}
 
-		//Package data to be sent
-		var payload = packagePayload();
+		textarea.filters {
+			height: 300px;
+		}
+		</style>
 
-		//Make the fetch request
-		var result = $.ajax({
-			async: false,
-			type: "POST",
-			url: '/fetch/',
-			data: JSON.stringify(payload),
-			contentType: 'application/json;charset=UTF-8',
-		});
-		//Handle success
-		result.done(function(resp) {
-			if (resp.csv){
-				window.location.href = "/download/";
-			}
-		});
-		//Handle failure
-		result.fail(function(resp) {
-			//Alert with whatever we got back
-			if (resp.responseJSON){
-				alert(resp.responseJSON.message);
-			} else {
-				alert(resp.statusText);
-			}
-		});
-	});
+		<div class="col-md-4 col-md-offset-4">
+			<h1 style="text-align: center">Data Mapper</h1>
 
-	//Save button logic
-	$('#save-button').click(function(){
-		console.log(this);
-		var storageObj = packagePayload();
-		var data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(storageObj));
-		$('#download-helper').attr("href", data);
-		$('#download-helper').attr("download", "data-mapper-settings.json");
-		$('#download-helper')[0].click();
-	});
+			<p><em>A tool to get your street addresses on a map and sorted into categories.</em></p>
 
-</script>
+			<button id="settings-button" class="btn btn-info btn-sm">Settings</button>
+			<button id="save-button" class="btn btn-default btn-sm">Save</button> 
+			<a id="download-helper" style="display:none;"></a>
+			<label class="file-container btn btn-default btn-sm">
+			    Import
+			    <input id="import-button" type="file" onchange="var fileBlob = this.files[0]" />
+			</label>
 
-{% endblock %}  
+			<div id="settings-panel" style="display:none;">
+
+				<hr>
+
+				<h4>Category Column</h4>
+				<p>The title of the column that will be parsed for categorization.</p>
+				<div class="form-group">
+			        <input class="form-control" placeholder="Column title" id="category-column">
+				</div>
+
+				<h4>Category Filters</h4>
+				<p>An array of JSON objects that will be matched against the column above. If any of the "keywords" are found, the row will be assigned the object's category and color (unless it also matches a term in the optional "exclude" set). An example is provided by default.</p>
+				<div class="form-group">
+			        <textarea class="form-control filters" placeholder="Enter valid JSON for filters" id="category-filters">
+[
+	{
+	    "category": "Pie",
+	    "keywords": ["pie", "slice"],
+	    "color": "#333333"
+	},
+	{
+	    "category": "Cake",
+	    "keywords": ["cake", "frosting"],
+	    "exclude": ["cupcake", "upside-down"],
+	    "color": "#666666"
+	}
+]
+			        </textarea>
+				</div>
+
+				<h4>Street Address Column</h4>
+				<p>The title of the column that will be parsed for geocoding.</p>
+				<div class="form-group">
+			        <input class="form-control" placeholder="Column title" id="address-column">
+				</div>
+				<p>Optional: Postal code column title, if not included in the street address.</p>
+				<div class="form-group">
+			        <input class="form-control" placeholder="Column title" id="zip-code-column">
+				</div>
+
+				<h4>Bing API Key</h4>
+				<p>Bing is used to fetch latitude and longitude points from a given address. Please enter your API key to access this service.</p>
+				<div class="form-group">
+			        <input class="form-control" placeholder="API key" id="api-key">
+				</div>
+
+				<h4>Product Affiliate Code</h4>
+				<p>This is the code for the market the story will be created with in P2P.</p>
+				<div class="form-group">
+			        <input class="form-control" placeholder="Product affiliate code (lanews, chinews, sdut, etc)" id="owner-code">
+				</div>
+
+				<h4>Date Limits</h4>
+				<p>(Optional) Only plots points between today and the date listed below. Can be in "Last Wednesday" format or "MM/DD/YYYY" format. Leave blank to process all rows.</p>
+				<div class="form-group">
+			        <input class="form-control" placeholder="1/1/1970" id="limit-date">
+				</div>
+
+				<p>(Optional) If a date is entered above, specify which column contains the date string.</p>
+				<div class="form-group">
+			        <input class="form-control" placeholder="Date column" id="date-column">
+				</div>
+
+				<!--
+				<p>(Optional) If a date is entered above, specify the format of the date string using <a href="http://strftime.org/" target="_blank">strftime notation</a>.</p>
+				<div class="form-group">
+			        <input class="form-control" placeholder="Date column" id="date-format">
+				</div>
+				-->
+
+
+			</div>
+
+			<hr>
+
+			<h2>Fetch</h2>
+			<p>Input a URL to public .csv file (or .zip containing a .csv) for initial processing. Outputs a new .csv file.</p>
+			<form>
+
+			    <div class="form-group">
+		            <input class="form-control" placeholder="Enter URL to public file" id="fetch_url">
+		    	</div>
+
+			    
+			    <button id="fetch" class="btn btn-primary">Submit</button>
+			    <img id="fetch-loader" height="30" src="/static/ripple.gif" style="display:none;"/>
+
+			</form>   
+
+			<hr>
+
+			<h2>Process</h2>
+			<p>Upload existing .csv file for processing through category filtering and geocoding systems. Outputs a new .csv file.</p>
+			<form>
+
+			    <div class="form-group">
+		            <input class="form-control" type="file">
+		    	</div>
+			    
+			    <button id="process" class="btn btn-primary">Submit</button>
+
+			</form>   
+
+			<hr>
+
+			<h2>Create Map</h2>
+			<p>Takes a finalized .csv file and creates either a test map to check results or a map on the live site.</p>
+			<form method="post" action="/index"  id="db_post" name="db_post">
+
+			    <div class="form-group">
+		            <input class="form-control" type="file">
+		    	</div>
+			    
+			    <button id="stage_map" class="btn btn-info">Stage Map</button>
+			    <button id="live_map" class="btn btn-success">Live Map</button>
+
+			</form>   
+
+		</div>
+
+		<script>
+			//Show or hide our settings
+			$("#settings-button").click(function(){
+				$("#settings-panel").slideToggle();
+			});
+
+			//Package payload for use
+			var packagePayload = function(){
+				//See if we've got valid JSON in the filters
+				try {
+					var one_line_filters = $("#category-filters").val().replace(/\r?\n/g, ' ');
+					one_line_filters = JSON.parse(one_line_filters);
+				} catch (err){
+					var json_error = "Category filters are not valid JSON!";
+					alert(json_error);
+					console.log(err);
+					throw new Error(json_error);
+				}
+
+				var payload = {
+					fetch_url: $("#fetch_url").val(),
+					category_column: $("#category-column").val(),
+					category_filters: one_line_filters,
+					address_column: $("#address-column").val(),
+					zip_code_column: $("#zip-code-column").val(),
+					api_key: $("#api-key").val(),
+					owner_code: $("#owner-code").val(),
+					limit_date: $("#limit-date").val(),
+					date_column: $("#date-column").val()
+				}
+
+				return payload;
+			};
+
+			//Fetch logic
+			$("#fetch").click(function(e){
+				e.preventDefault();
+				$("#fetch-loader").show();
+
+				//Package data to be sent
+				var payload = packagePayload();
+
+				//Make the fetch request
+				var result = $.ajax({
+					async: false,
+					type: "POST",
+					url: '/fetch/',
+					data: JSON.stringify(payload),
+					contentType: 'application/json;charset=UTF-8',
+				});
+				//Handle success
+				result.done(function(resp) {
+					if (resp.csv){
+						window.location.href = "/download/";
+					}
+				});
+				//Handle failure
+				result.fail(function(resp) {
+					//Alert with whatever we got back
+					if (resp.responseJSON){
+						alert(resp.responseJSON.message);
+					} else {
+						alert(resp.statusText);
+					}
+				});
+				//Always hide loader
+				result.always(function(){
+					$("#fetch-loader").hide();
+				})
+			});
+
+			//Save button logic
+			$('#save-button').click(function(){
+				console.log(this);
+				var storageObj = packagePayload();
+				var data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(storageObj));
+				$('#download-helper').attr("href", data);
+				$('#download-helper').attr("download", "data-mapper-settings.json");
+				$('#download-helper')[0].click();
+			});
+
+			//Import button logic
+			$('#import-button').change(function(e){
+				//var file = $('#import-button').val();
+				var fileBlob = e.target.files[0];
+				var fileName = $('#import-button').val();
+				if (fileName.substring(fileName.length - 4, fileName.length) != "json"){
+					alert("Import can only accept .json files!");
+				} else {
+					var fr = new FileReader();
+					fr.onload = function(e) {
+					    var loadObj = JSON.parse(e.target.result);
+					    //Make sure loaded object has all the right props
+					    if(loadObj.hasOwnProperty("fetch_url") &&
+					    	loadObj.hasOwnProperty("category_column") &&
+					    	loadObj.hasOwnProperty("address_column") &&
+					    	loadObj.hasOwnProperty("zip_code_column") &&
+					    	loadObj.hasOwnProperty("api_key") &&
+					    	loadObj.hasOwnProperty("owner_code") &&
+					    	loadObj.hasOwnProperty("category_filters") &&
+					    	loadObj.hasOwnProperty("limit_date") &&
+					    	loadObj.hasOwnProperty("date_column")
+					    ){
+					    	//If it checks out, run the assignment code
+					    	$("#fetch_url").val(loadObj.fetch_url);
+							$("#category-column").val(loadObj.category_column);
+							$("#address-column").val(loadObj.address_column);
+							$("#zip-code-column").val(loadObj.zip_code_column);
+							$("#api-key").val(loadObj.api_key);
+							$("#owner-code").val(loadObj.owner_code);
+							$("#limit-date").val(loadObj.limit_date);
+							$("#date-column").val(loadObj.date_column);
+							var prettyCategories = JSON.stringify(loadObj.category_filters, null, 4);
+							$("#category-filters").val(prettyCategories);
+							//Show success message
+							alert("Success! Settings imported.");
+						} else {
+							//Not the right props, show error
+							alert("JSON is missing one or more required properties!");
+						}
+					};
+				}
+				fr.readAsText(fileBlob);
+			});
+
+
+		</script>
+    
+  	</body>
+</html>  

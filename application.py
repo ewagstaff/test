@@ -21,7 +21,20 @@ from p2p import P2PException
 
 # Elastic Beanstalk initalization
 application = Flask(__name__)
+application.config['STATIC_FOLDER'] = '/'
 application.debug = True
+print application.config['STATIC_FOLDER']
+
+def day_switch(x):
+    return {
+        'Last Monday': 0,
+        'Last Tuesday': 1,
+        'Last Wednesday': 2,
+        'Last Thursday': 3,
+        'Last Friday': 4,
+        'Last Saturday': 5,
+        'Last Sunday': 6,
+    }.get(x, 0) 
 
 #Get today's date string
 date_string = datetime.date.today().strftime("%Y-%m-%d")
@@ -35,7 +48,7 @@ def to_end_of_list(sorted_list, values):
     except ValueError:
         pass
 
-def process_points(redo=False):
+def process_points(redo, data):
     """
     Geocodes and applies filters, generating an updated csv.
     """
@@ -50,22 +63,35 @@ def process_points(redo=False):
     last_week = []
     p2p_points = []
     today = datetime.datetime.today()
-    sinceLastWednesday = today - datetime.timedelta(days=today.weekday() - 2, weeks=1)
-    sinceLastWednesday = sinceLastWednesday.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    #Figure out how far we're going back in time
+    date_limit = None
+    if (data['limit_date']):
+        if ("last" in data['limit_date'].lower()):
+            #Set to day of week last week
+            date_offset = day_switch(data['limit_date'])
+            date_limit = today - datetime.timedelta(days=today.weekday() - date_offset, weeks=1)
+            date_limit = date_limit.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            #Set to concrete date in time
+            date_limit = parse(data['limit_date'])
+
     for row in row_list:
-        dt = parse(row['activityDate'])
-        if dt >= sinceLastWednesday or redo:
+        dt = parse(row[data['date_column']])
+        print "Date: " + str(dt)
+        print "Date limit: " + str(date_limit)
+        if not date_limit or dt >= date_limit:
             # If this is a valid date, hit the Bing API to get the lat/long
-            if row['BLOCK_ADDRESS']:
+            if row[data['address_column']]:
                 try:
-                    print "OK: Getting lat/long for " + row['BLOCK_ADDRESS']
+                    print "OK: Getting lat/long for " + row[data['address_column']]
                     payload = {
-                        "addressLine": str(row['BLOCK_ADDRESS']), 
-                        "key": "AqEQ_HqipMZe_KnMeHEJ_CEtkNG9Y34_aXaGeIya4fBtc4hTIA9KYzMfFaK5nbK5"
+                        "addressLine": str(row[data['address_column']]), 
+                        "key": data['api_key']
                     }
                     #Add zipcode if it exists
-                    if row['ZipCode']:
-                        payload['postalCode'] = str(row['ZipCode'])[:5]
+                    if row[data['zip_code_column']]:
+                        payload['postalCode'] = str(row[data['zip_code_column']])[:5]
                     
                     #Run the actual request through the API
                     r = requests.get("http://dev.virtualearth.net/REST/v1/Locations", payload)
@@ -73,7 +99,7 @@ def process_points(redo=False):
                     coords = response['resourceSets'][0]['resources'][0]['point']['coordinates']
                     confidence = response['resourceSets'][0]['resources'][0]['confidence']
                 except Exception:
-                    print "WARN: No point could be geocoded for this address (" + row['BLOCK_ADDRESS'] + ")"
+                    print "WARN: No point could be geocoded for this address (" + row[data['address_column']] + ")"
                     coords = ["NONE", "NONE"]
             else: 
                 print "WARN: No block address to geocode!"
@@ -90,8 +116,11 @@ def process_points(redo=False):
             crime_type = "Other"
             point_color = "white"
 
+            #Get filters array from payload
+            filter_array = data['category_filters'];
+
             #Cycle through filters
-            for filter_item in filters.filter_array:
+            for filter_item in filter_array:
                 #True list includes words to match
                 true_list = filter_item['keywords']
 
@@ -126,7 +155,6 @@ def fetch():
     
     content = {}
     data = json.loads(request.data)
-    filters = data['category_filters']
 
     #If message is blank, there are no errors
     message = ""
@@ -147,8 +175,28 @@ def fetch():
                 with open("original-"+date_string+".csv", "wb") as csv_file:
                     for line in extracted_file:
                         csv_file.write(line)
-                #Set the csv property to the file
-                content['csv'] = "original-"+date_string+".csv"
+                
+                #Run processing to add data columns
+                last_week = process_points(False, data)
+
+                #Write a new file that only contains last week's dates plus lat/long
+                try:
+                    #Push our new columns to the end of the csv
+                    outfile_headers = last_week[0].keys()
+                    to_end_of_list(outfile_headers, ["crime", "color", "lat", "long", "confidence"])
+
+                    #Write the new file
+                    outfile = csv.DictWriter(open("geocoded-"+date_string+".csv", "w"), fieldnames=outfile_headers)
+                    outfile.writeheader()
+                    outfile.writerows(last_week)
+
+                    #Set the csv property to the file
+                    content['csv'] = "geocoded-"+date_string+".csv"
+                    
+                    #Remove old CSV to clean things up
+                    os.remove("original-"+date_string+".csv")
+                except IndexError:
+                    print "ERROR: CSV does not contain data within range of last 7 days!"
 
             else:
                 message += "Remote zip file must only contain the target file!\n"
