@@ -234,14 +234,14 @@ def map(live):
 
 @application.route('/download/', methods=['GET'])
 def download():
-    with open("original-"+date_string+".csv") as fp:
+    with open("geocoded-"+date_string+".csv") as fp:
         csv = fp.read()
 
     return Response(
         csv,
         mimetype="text/csv",
         headers={"Content-disposition":
-                 "attachment; filename=original-"+date_string+".csv"})
+                 "attachment; filename=geocoded-"+date_string+".csv"})
 
 if __name__ == '__main__':
-    application.run(host='0.0.0.0')
+    application.run(threaded=True, host='0.0.0.0')
