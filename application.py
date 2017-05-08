@@ -23,7 +23,6 @@ from p2p import P2PException
 application = Flask(__name__)
 application.config['STATIC_FOLDER'] = '/'
 application.debug = True
-print application.config['STATIC_FOLDER']
 
 def day_switch(x):
     return {

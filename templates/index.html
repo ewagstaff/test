@@ -89,7 +89,7 @@
 				<div class="form-group">
 			        <input class="form-control" placeholder="Column title" id="address-column">
 				</div>
-				<p>Optional: Postal code column title, if not included in the street address.</p>
+				<p>(Optional) Postal code column title, if not included in the street address.</p>
 				<div class="form-group">
 			        <input class="form-control" placeholder="Column title" id="zip-code-column">
 				</div>
@@ -226,7 +226,10 @@
 				});
 				//Handle success
 				result.done(function(resp) {
+					console.log("done!");
 					if (resp.csv){
+						console.log(resp);
+						console.log("should open download");
 						window.location.href = "/download/";
 					}
 				});
