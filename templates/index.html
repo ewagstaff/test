@@ -242,6 +242,8 @@
 		</div>
 
 		<script>
+
+
 			//Show or hide our settings
 			$("#settings-button").click(function(){
 				$("#settings-panel").slideToggle();
@@ -365,6 +367,35 @@
 				}
 			});
 
+			var writeFields = function(loadObj){
+				$("#fetch_url").val(loadObj.fetch_url);
+				$("#category-column").val(loadObj.category_column);
+				$("#address-column").val(loadObj.address_column);
+				$("#zip-code-column").val(loadObj.zip_code_column);
+				$("#api-key").val(loadObj.api_key);
+				$("#owner-code").val(loadObj.owner_code);
+				$("#limit-date").val(loadObj.limit_date);
+				$("#date-column").val(loadObj.date_column);
+				var prettyCategories = JSON.stringify(loadObj.category_filters, null, 4);
+				$("#category-filters").val(prettyCategories);
+			}
+
+			//Load JSON on start from localStorage if it's available
+			var initLoad = JSON.parse(localStorage.getItem("dataMapperJSON"));
+			//Log it to inspect if needed
+			console.log(initLoad);
+			//Set it to fields
+			if (initLoad != null){
+				writeFields(initLoad);
+			}
+			
+			//Function to save settings JSON locally to load it up next time automatically
+			var saveLocal = function(){
+				var storageObj = packagePayload();
+				var data = JSON.stringify(storageObj);
+				localStorage.setItem('dataMapperJSON', data);
+			}
+
 			//Save button logic
 			$('#save-button').click(function(){
 				console.log(this);
@@ -373,6 +404,9 @@
 				$('#download-helper').attr("href", data);
 				$('#download-helper').attr("download", "data-mapper-settings.json");
 				$('#download-helper')[0].click();
+
+				//Save this data locally
+				saveLocal();
 			});
 
 			//Import button logic
@@ -398,18 +432,11 @@
 					    	loadObj.hasOwnProperty("date_column")
 					    ){
 					    	//If it checks out, run the assignment code
-					    	$("#fetch_url").val(loadObj.fetch_url);
-							$("#category-column").val(loadObj.category_column);
-							$("#address-column").val(loadObj.address_column);
-							$("#zip-code-column").val(loadObj.zip_code_column);
-							$("#api-key").val(loadObj.api_key);
-							$("#owner-code").val(loadObj.owner_code);
-							$("#limit-date").val(loadObj.limit_date);
-							$("#date-column").val(loadObj.date_column);
-							var prettyCategories = JSON.stringify(loadObj.category_filters, null, 4);
-							$("#category-filters").val(prettyCategories);
+					    	writeFields(loadObj);
 							//Show success message
 							alert("Success! Settings imported.");
+							//Save this data locally
+							saveLocal();
 						} else {
 							//Not the right props, show error
 							alert("JSON is missing one or more required properties!");
