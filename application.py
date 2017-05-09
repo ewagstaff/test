@@ -165,15 +165,30 @@ def process_points(redo, data):
 def index():                
     return render_template('index.html')
 
-@application.route('/fetch-progress/', methods=['GET'])
-def fetch_progress():
+@application.route('/get-progress/', methods=['GET'])
+def get_progress():
     global fetch_total
     global process_total
+    global map_total
     global fetch_current
     global process_current
+    global map_current
 
-    if fetch_current != 0 and fetch_total != 0:
-        progress = float(fetch_current + 1)/fetch_total
+    #Figure out which progress we're looking for
+    if request.args.get("type") == "fetch":
+        current_no = fetch_current
+        total_no = fetch_total
+    elif request.args.get("type") == "process":
+        current_no = process_current
+        total_no = process_total
+    else:
+        #Defaults to map
+        current_no = map_current
+        total_no = map_total
+
+    #Run the calculations on our chosen type
+    if current_no != 0 and total_no != 0:
+        progress = float(current_no + 1)/total_no
         #Errors if we return a number, dunno why
         return str(progress)
     else:
@@ -183,9 +198,9 @@ def fetch_progress():
 
 @application.route('/fetch/', methods=['POST'])
 def fetch():
+    #Go get the latest zip from the site
     global fetch_total
     global fetch_current
-    #Go get the latest zip from the site
     fetch_total = 0;
     fetch_current = 0;
     

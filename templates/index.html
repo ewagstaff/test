@@ -204,8 +204,12 @@
 			    
 			    <div class="button-box" id="process">
 				    <button class="btn btn-primary">Submit</button>
-				    <div class="loader" style="display:none;">
+				    <div class="loader">
 				    	<img src="/static/ripple.gif" />
+					</div>
+					<div class="loading-bar">
+				    	<p class="inner-text">0%</p>
+				    	<div class="inner-bar"></div>
 				    </div>
 				</div>
 
@@ -224,8 +228,12 @@
 			    <div class="button-box" id="maps">
 			    	<button id="stage_map" class="btn btn-info">Stage Map</button>
 			    	<button id="live_map" class="btn btn-success">Live Map</button>
-			    	<div class="loader" style="display:none;">
+			    	<div class="loader">
 				    	<img src="/static/ripple.gif" />
+					</div>
+					<div class="loading-bar">
+				    	<p class="inner-text">0%</p>
+				    	<div class="inner-bar"></div>
 				    </div>
 			    </div>
 
@@ -243,23 +251,42 @@
 			var getProgress = function(type){
 				var endpoint, $target;
 				if (type == "fetch"){
-					endpoint = "/fetch-progress/";
+					endpoint = "/get-progress/";
 					$target = $("#fetch");
 				} 
 				var progress = $.ajax({
 					async: true,
 					type: "GET",
-					url: endpoint
+					url: endpoint,
+					data: {"type": type}
 				});
 				progress.done(function(data){
 					var percent = Math.floor(parseFloat(data) * 100);
-					$target.find(".inner-bar").width(percent.toString() + "%");
-					$target.find(".inner-text").text(percent.toString() + "%");
 					//Run it again if it's not done
 					if (percent < 100){
 						setTimeout(getProgress, 500, type);
+					} else {
+						percent = 0;
 					}
+					//Update the text and bar width
+					$target.find(".inner-bar").width(percent.toString() + "%");
+					$target.find(".inner-text").text(percent.toString() + "%");
 				});
+			}
+
+			var thisCanRun = function(thisProcess){
+				//If any work is currently being done, disallow new work
+				var canThisRun = true;
+				if ($("#fetch .loading-bar").is(":visible")){
+					canThisRun = false;
+				}
+				if ($("#process .loading-bar").is(":visible")){
+					canThisRun = false;
+				}
+				if ($("#maps .loading-bar").is(":visible")){
+					canThisRun = false;
+				}
+				return canThisRun;
 			}
 
 			//Package payload for use
@@ -293,43 +320,49 @@
 			//Fetch logic
 			$("#fetch button").click(function(e){
 				e.preventDefault();
-				$("#fetch .loader, #fetch .loading-bar").show();
 
-				//Package data to be sent
-				var payload = packagePayload();
+				if (thisCanRun()){
+					//If nothing else is running, this can start
+					$("#fetch .loader, #fetch .loading-bar").show();
 
-				//Make the fetch request
-				var result = $.ajax({
-					async: true,
-					type: "POST",
-					url: '/fetch/',
-					data: JSON.stringify(payload),
-					contentType: 'application/json;charset=UTF-8',
-				});
-				//Handle success
-				result.done(function(resp) {
-					if (resp.csv){
-						window.location.href = "/download/";
-					} else {
-						alert("CSV does not contain data within range!")
-					}
-				});
-				//Handle failure
-				result.fail(function(resp) {
-					//Alert with whatever we got back
-					if (resp.responseJSON){
-						alert(resp.responseJSON.message);
-					} else {
-						alert(resp.statusText);
-					}
-				});
-				//Always hide loader
-				result.always(function(){
-					$("#fetch .loader, #fetch .loading-bar").hide();
-				});
-				//Make the progress request
-				getProgress("fetch");
-				
+					//Package data to be sent
+					var payload = packagePayload();
+
+					//Make the fetch request
+					var result = $.ajax({
+						async: true,
+						type: "POST",
+						url: '/fetch/',
+						data: JSON.stringify(payload),
+						contentType: 'application/json;charset=UTF-8',
+					});
+					//Handle success
+					result.done(function(resp) {
+						if (resp.csv){
+							window.location.href = "/download/";
+						} else {
+							alert("CSV does not contain data within range!")
+						}
+					});
+					//Handle failure
+					result.fail(function(resp) {
+						//Alert with whatever we got back
+						if (resp.responseJSON){
+							alert(resp.responseJSON.message);
+						} else {
+							alert(resp.statusText);
+						}
+					});
+					//Always hide loader
+					result.always(function(){
+						$("#fetch .loader, #fetch .loading-bar").hide();
+					});
+					//Make the progress request
+					getProgress("fetch");
+				} else {
+					//If something else is running, alert
+					alert("Please wait for the existing process to finish!");
+				}
 			});
 
 			//Save button logic
