@@ -38,6 +38,14 @@ def day_switch(x):
 #Get today's date string
 date_string = datetime.date.today().strftime("%Y-%m-%d")
 
+#Numbers that can be polled
+fetch_total = 0;
+fetch_current = 0;
+process_total = 0;
+process_current = 0;
+map_total = 0;
+map_current = 0;
+
 def to_end_of_list(sorted_list, values):
     try:
         for value in values:
@@ -51,6 +59,9 @@ def process_points(redo, data):
     """
     Geocodes and applies filters, generating an updated csv.
     """
+    global fetch_current
+    global process_current
+
     file_name = "original"
     if redo:
         file_name = "geocoded"
@@ -76,9 +87,15 @@ def process_points(redo, data):
             date_limit = parse(data['limit_date'])
 
     for row in row_list:
+        #Increment counters for metering
+        if redo:
+            process_current += 1;
+        else: 
+            fetch_current += 1;
+        
         dt = parse(row[data['date_column']])
-        print "Date: " + str(dt)
-        print "Date limit: " + str(date_limit)
+        # print "Date: " + str(dt)
+        # print "Date limit: " + str(date_limit)
         if not date_limit or dt >= date_limit:
             # If this is a valid date, hit the Bing API to get the lat/long
             if row[data['address_column']]:
@@ -148,9 +165,29 @@ def process_points(redo, data):
 def index():                
     return render_template('index.html')
 
+@application.route('/fetch-progress/', methods=['GET'])
+def fetch_progress():
+    global fetch_total
+    global process_total
+    global fetch_current
+    global process_current
+
+    if fetch_current != 0 and fetch_total != 0:
+        progress = float(fetch_current + 1)/fetch_total
+        #Errors if we return a number, dunno why
+        return str(progress)
+    else:
+        progress = 0
+        #Errors if we return a number, dunno why
+        return str(progress)
+
 @application.route('/fetch/', methods=['POST'])
 def fetch():
+    global fetch_total
+    global fetch_current
     #Go get the latest zip from the site
+    fetch_total = 0;
+    fetch_current = 0;
     
     content = {}
     data = json.loads(request.data)
@@ -174,6 +211,9 @@ def fetch():
                 with open("original-"+date_string+".csv", "wb") as csv_file:
                     for line in extracted_file:
                         csv_file.write(line)
+
+                #Get total rows for meter
+                fetch_total = sum(1 for line in open("original-"+date_string+".csv")) 
                 
                 #Run processing to add data columns
                 last_week = process_points(False, data)
@@ -244,4 +284,4 @@ def download():
                  "attachment; filename=geocoded-"+date_string+".csv"})
 
 if __name__ == '__main__':
-    application.run(threaded=True, host='0.0.0.0')
+    application.run(host='0.0.0.0', threaded=True)

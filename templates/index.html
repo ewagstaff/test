@@ -9,6 +9,14 @@
 	<body>
 
 		<style>
+		.clearfix {
+			clear: both;
+		}
+
+		#main-app {
+			margin-bottom: 30px;
+		}
+
 		.file-container {
 		    overflow: hidden;
 		    position: relative;
@@ -39,9 +47,51 @@
 		textarea.filters {
 			height: 300px;
 		}
+
+		#fetch > *, #process > *, #maps > *, .loader, .loader > * {
+			float: left;
+			margin-right: 5px;
+		} 
+
+		.loader, .loading-bar {
+			display:none;
+		}
+
+		.loader img {
+			height: 30px;
+		}
+
+		.button-box {
+			width: 100%;
+    		height: 35px;
+		}
+
+		.loading-bar {
+			margin: 10px 0;
+		    clear: both;
+		    width: 100%;
+		    border-radius: 4px;
+		    background-color: #ccc;
+		    position: relative;
+		    height: 30px;
+		}
+
+		.loading-bar .inner-text {
+			color: #fff;
+		    position: absolute;
+		    top: 5px;
+		    left: 5px;
+		}
+
+		.loading-bar .inner-bar {
+			width: 0%;
+		    height: 30px;
+		    border-radius: 4px;
+		    background-color: #5bc0de;
+		}
 		</style>
 
-		<div class="col-md-4 col-md-offset-4">
+		<div class="col-md-4 col-md-offset-4" id="main-app">
 			<h1 style="text-align: center">Data Mapper</h1>
 
 			<p><em>A tool to get your street addresses on a map and sorted into categories.</em></p>
@@ -117,17 +167,9 @@
 			        <input class="form-control" placeholder="Date column" id="date-column">
 				</div>
 
-				<!--
-				<p>(Optional) If a date is entered above, specify the format of the date string using <a href="http://strftime.org/" target="_blank">strftime notation</a>.</p>
-				<div class="form-group">
-			        <input class="form-control" placeholder="Date column" id="date-format">
-				</div>
-				-->
-
-
 			</div>
 
-			<hr>
+			<hr class="clearfix">
 
 			<h2>Fetch</h2>
 			<p>Input a URL to public .csv file (or .zip containing a .csv) for initial processing. Outputs a new .csv file.</p>
@@ -137,13 +179,20 @@
 		            <input class="form-control" placeholder="Enter URL to public file" id="fetch_url">
 		    	</div>
 
-			    
-			    <button id="fetch" class="btn btn-primary">Submit</button>
-			    <img id="fetch-loader" height="30" src="/static/ripple.gif" style="display:none;"/>
+			    <div class="button-box" id="fetch">
+				    <button class="btn btn-primary">Submit</button>
+				    <div class="loader">
+				    	<img src="/static/ripple.gif" />
+					</div>
+					<div class="loading-bar">
+				    	<p class="inner-text">0%</p>
+				    	<div class="inner-bar"></div>
+				    </div>
+				</div>
 
 			</form>   
 
-			<hr>
+			<hr class="clearfix">
 
 			<h2>Process</h2>
 			<p>Upload existing .csv file for processing through category filtering and geocoding systems. Outputs a new .csv file.</p>
@@ -153,11 +202,16 @@
 		            <input class="form-control" type="file">
 		    	</div>
 			    
-			    <button id="process" class="btn btn-primary">Submit</button>
+			    <div class="button-box" id="process">
+				    <button class="btn btn-primary">Submit</button>
+				    <div class="loader" style="display:none;">
+				    	<img src="/static/ripple.gif" />
+				    </div>
+				</div>
 
 			</form>   
 
-			<hr>
+			<hr class="clearfix">
 
 			<h2>Create Map</h2>
 			<p>Takes a finalized .csv file and creates either a test map to check results or a map on the live site.</p>
@@ -167,8 +221,13 @@
 		            <input class="form-control" type="file">
 		    	</div>
 			    
-			    <button id="stage_map" class="btn btn-info">Stage Map</button>
-			    <button id="live_map" class="btn btn-success">Live Map</button>
+			    <div class="button-box" id="maps">
+			    	<button id="stage_map" class="btn btn-info">Stage Map</button>
+			    	<button id="live_map" class="btn btn-success">Live Map</button>
+			    	<div class="loader" style="display:none;">
+				    	<img src="/static/ripple.gif" />
+				    </div>
+			    </div>
 
 			</form>   
 
@@ -179,6 +238,29 @@
 			$("#settings-button").click(function(){
 				$("#settings-panel").slideToggle();
 			});
+
+			//Progress tracker that ends itself
+			var getProgress = function(type){
+				var endpoint, $target;
+				if (type == "fetch"){
+					endpoint = "/fetch-progress/";
+					$target = $("#fetch");
+				} 
+				var progress = $.ajax({
+					async: true,
+					type: "GET",
+					url: endpoint
+				});
+				progress.done(function(data){
+					var percent = Math.floor(parseFloat(data) * 100);
+					$target.find(".inner-bar").width(percent.toString() + "%");
+					$target.find(".inner-text").text(percent.toString() + "%");
+					//Run it again if it's not done
+					if (percent < 100){
+						setTimeout(getProgress, 500, type);
+					}
+				});
+			}
 
 			//Package payload for use
 			var packagePayload = function(){
@@ -209,16 +291,16 @@
 			};
 
 			//Fetch logic
-			$("#fetch").click(function(e){
+			$("#fetch button").click(function(e){
 				e.preventDefault();
-				$("#fetch-loader").show();
+				$("#fetch .loader, #fetch .loading-bar").show();
 
 				//Package data to be sent
 				var payload = packagePayload();
 
 				//Make the fetch request
 				var result = $.ajax({
-					async: false,
+					async: true,
 					type: "POST",
 					url: '/fetch/',
 					data: JSON.stringify(payload),
@@ -226,11 +308,10 @@
 				});
 				//Handle success
 				result.done(function(resp) {
-					console.log("done!");
 					if (resp.csv){
-						console.log(resp);
-						console.log("should open download");
 						window.location.href = "/download/";
+					} else {
+						alert("CSV does not contain data within range!")
 					}
 				});
 				//Handle failure
@@ -244,8 +325,11 @@
 				});
 				//Always hide loader
 				result.always(function(){
-					$("#fetch-loader").hide();
-				})
+					$("#fetch .loader, #fetch .loading-bar").hide();
+				});
+				//Make the progress request
+				getProgress("fetch");
+				
 			});
 
 			//Save button logic
