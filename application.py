@@ -13,10 +13,10 @@ from dateutil.parser import parse
 import datetime
 import requests
 import csv
-import p2p
 import sys
 import os
 import json
+import p2p
 from p2p import P2PException
 
 # Elastic Beanstalk initalization
